@@ -1,7 +1,9 @@
+import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
 from loguru import logger
-
+import datetime
+import time
 from classifier import NewsCategoryClassifier
 
 
@@ -19,7 +21,6 @@ class PredictResponse(BaseModel):
 
 MODEL_PATH = "../data/news_classifier.joblib"
 LOGS_OUTPUT_PATH = "../data/logs.out"
-
 app = FastAPI()
 
 
@@ -34,6 +35,11 @@ def startup_event():
     Access to the model instance and log file will be needed in /predict endpoint, make sure you
     store them as global variables
     """
+    global model
+    model = NewsCategoryClassifier()
+    model.load(MODEL_PATH)
+    global logging_file
+    logging_file = open(file=LOGS_OUTPUT_PATH, mode="a")
     logger.info("Setup completed")
 
 
@@ -45,6 +51,7 @@ def shutdown_event():
     1. Make sure to flush the log file and close any file pointers to avoid corruption
     2. Any other cleanups
     """
+    logging_file.close()
     logger.info("Shutting down application")
 
 
@@ -65,10 +72,23 @@ def predict(request: PredictRequest):
     }
     3. Construct an instance of `PredictResponse` and return
     """
-    response = PredictResponse(scores={"label1": 0.9, "label2": 0.1}, label="label1")
+    start = time.time()
+    prediction = model.predict_proba(request.dict())
+    label = sorted(prediction.items(), key=lambda t: t[1], reverse=True)[0][0]
+
+    response = PredictResponse(scores=prediction, label=label)
+    end = time.time()
+    log_artifact = dict(timestamp=datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S"), request=request.dict(),
+                        prediction=response.dict(),
+                        latency=end - start)
+    logging_file.write(str(log_artifact) + "\n")
     return response
 
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
+
+if __name__ == '__main__':
+    uvicorn.run(app)

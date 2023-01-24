@@ -35,9 +35,9 @@ class NewsCategoryClassifier:
         pipeline = Pipeline([
             ('transformer_featurizer', TransformerFeaturizer()),
             ('classifier', LogisticRegression(
-                    multi_class='multinomial',
-                    tol=0.001,
-                    solver='saga',
+                multi_class='multinomial',
+                tol=0.001,
+                solver='saga',
             ))
         ], verbose=self.verbose)
         return pipeline
@@ -72,7 +72,7 @@ class NewsCategoryClassifier:
             ...
         }
         """
-        return {}
+        return {label: proba for label, proba in zip(self.classes, self.pipeline.predict_proba(model_input)[0])}
 
     def predict_label(self, model_input: dict) -> str:
         """
@@ -83,4 +83,4 @@ class NewsCategoryClassifier:
 
         Output format: predicted label for the model input
         """
-        return ""
+        return self.pipeline.predict(model_input)

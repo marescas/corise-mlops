@@ -51,6 +51,7 @@ def shutdown_event():
     1. Make sure to flush the log file and close any file pointers to avoid corruption
     2. Any other cleanups
     """
+    logging_file.flush()
     logging_file.close()
     logger.info("Shutting down application")
 
@@ -82,6 +83,7 @@ def predict(request: PredictRequest):
                         prediction=response.dict(),
                         latency=end - start)
     logging_file.write(str(log_artifact) + "\n")
+    logging_file.flush()
     return response
 
 
@@ -91,4 +93,4 @@ def read_root():
 
 
 if __name__ == '__main__':
-    uvicorn.run(app)
+    uvicorn.run(app, host="0.0.0.0")
